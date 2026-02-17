@@ -1,0 +1,28 @@
+export const INGREDIENTS = {
+  Bread: { type: 'base', cost: 1.2, color: 0xe8c082, imageKey: 'ing-Bread' },
+  Wrap: { type: 'base', cost: 1.4, color: 0xf1d5a6, imageKey: 'ing-Wrap' },
+  Rice: { type: 'base', cost: 1.0, color: 0xf7f0dc, imageKey: 'ing-Rice' },
+  Chips: { type: 'base', cost: 1.1, color: 0xf0c95f, imageKey: 'ing-Chips' },
+  Chicken: { type: 'protein', cost: 2.7, color: 0xd39f62, imageKey: 'ing-Chicken' },
+  Lamb: { type: 'protein', cost: 3.4, color: 0xa86b55, imageKey: 'ing-Lamb' },
+  Adana: { type: 'protein', cost: 3.1, color: 0xb6523d, imageKey: 'ing-Adana' },
+  Steak: { type: 'protein', cost: 3.8, color: 0x97533f, imageKey: 'ing-Steak' },
+  Kofta: { type: 'protein', cost: 2.9, color: 0xbd7055, imageKey: 'ing-Kofta' },
+  Wings: { type: 'protein', cost: 2.4, color: 0xcc8352, imageKey: 'ing-Wings' },
+  Salad: { type: 'topping', cost: 0.8, color: 0x93c46b, imageKey: 'ing-Salad' },
+  Tomato: { type: 'topping', cost: 0.7, color: 0xd84c40, imageKey: 'ing-Tomato' },
+  Onion: { type: 'topping', cost: 0.55, color: 0xd7bfd6, imageKey: 'ing-Onion' },
+  Pickles: { type: 'topping', cost: 0.65, color: 0x8eae4f, imageKey: 'ing-Pickles' },
+  'Garlic Yogurt': { type: 'sauce', cost: 0.9, color: 0xf8f2de, imageKey: 'ing-Garlic Yogurt' },
+  Hummus: { type: 'sauce', cost: 0.95, color: 0xd4bb7a, imageKey: 'ing-Hummus' },
+  BBQ: { type: 'sauce', cost: 0.8, color: 0x7b3f29, imageKey: 'ing-BBQ' },
+  Ketchup: { type: 'sauce', cost: 0.6, color: 0xc7473d, imageKey: 'ing-Ketchup' },
+  'Sweet Chilli': { type: 'sauce', cost: 0.7, color: 0xcf5f3f, imageKey: 'ing-Sweet Chilli' },
+  'Hot Chilli': { type: 'sauce', cost: 0.75, color: 0x9d2b2b, imageKey: 'ing-Hot Chilli' },
+  Mayo: { type: 'sauce', cost: 0.65, color: 0xfff3d2, imageKey: 'ing-Mayo' },
+  Baklava: { type: 'dessert', cost: 1.8, color: 0xe2b44a, imageKey: 'ing-Baklava' },
+  'Turkish Delight': { type: 'dessert', cost: 1.6, color: 0xde7994, imageKey: 'ing-Turkish Delight' },
+  'Rice Pudding': { type: 'dessert', cost: 1.5, color: 0xf3e8cc, imageKey: 'ing-Rice Pudding' },
+};
+
+export const INGREDIENT_ORDER = Object.keys(INGREDIENTS);
