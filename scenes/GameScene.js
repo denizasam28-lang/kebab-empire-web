@@ -23,20 +23,30 @@ export default class GameScene extends Phaser.Scene {
     this.ingredientButtons = [];
   }
 
-  create() {
-    this.character = this.registry.get('selectedCharacter');
-    this.palette = this.registry.get('palette');
-    this.cameras.main.setBackgroundColor(0xf8d6ae);
+create() {
+  this.character = this.registry.get('selectedCharacter');
 
-    this.buildShopInterior();
-    this.createCustomerVisual();
-    this.createOrderUI();
-    this.createControlButtons();
-
-    this.spawnNextOrder();
-    this.emitUiUpdate();
+  if (!this.character) {
+    this.character = {
+      prepMultiplier: 1,
+      patienceMultiplier: 1,
+      mistakePenaltyMultiplier: 1
+    };
   }
 
+  this.palette = this.registry.get('palette') || {};
+  this.cameras.main.setBackgroundColor(0xf8d6ae);
+
+  this.buildShopInterior();
+  this.createCustomerVisual();
+  this.createOrderUI();
+  this.createControlButtons();
+
+  this.spawnNextOrder();
+  this.emitUiUpdate();
+}
+
+  this.palette = this.registry.get('palette') || {};
   buildShopInterior() {
     const { width, height } = this.scale;
     this.cameras.main.setBackgroundColor('#f7ead7');
