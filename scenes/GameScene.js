@@ -13,95 +13,65 @@ export default class GameScene extends Phaser.Scene {
     this.activeOrder = null;
     this.activeCustomer = null;
     this.playerStack = [];
+    this.basePatienceSeconds = 24;
     this.patienceRemaining = 0;
-    this.lastActionTime = 0;
     this.ingredientButtons = [];
     this.stackSprites = [];
+    this.lastActionTime = 0;
+    this.basePatienceSeconds = 24;
     this.matchRule = 'exact-sequence';
-    this.isTransitioningCustomer = false;
+    this.ingredientButtons = [];
   }
 
   create() {
     this.character = this.registry.get('selectedCharacter');
+    this.palette = this.registry.get('palette');
     this.cameras.main.setBackgroundColor(0xf8d6ae);
 
-    this.createReusableTextures();
-    this.createSceneLayers();
-    this.createEnvironment();
-    this.createCounterUI();
-    this.createControls();
+    this.buildShopInterior();
+    this.createCustomerVisual();
+    this.createOrderUI();
+    this.createControlButtons();
 
-    this.spawnCustomerAndOrder();
+    this.spawnNextOrder();
     this.emitUiUpdate();
   }
 
-  createReusableTextures() {
-    if (!this.textures.exists('steam-dot')) {
-      const g = this.add.graphics();
-      g.fillStyle(0xffffff, 0.9);
-      g.fillCircle(6, 6, 6);
-      g.generateTexture('steam-dot', 12, 12);
-      g.destroy();
-    }
-
-    if (!this.textures.exists('pop-dot')) {
-      const g = this.add.graphics();
-      g.fillStyle(0xffebbe, 1);
-      g.fillCircle(4, 4, 4);
-      g.generateTexture('pop-dot', 8, 8);
-      g.destroy();
-    }
-  }
-
-  createSceneLayers() {
-    this.bgLayer = this.add.container(0, 0).setDepth(0);
-    this.midLayer = this.add.container(0, 0).setDepth(10);
-    this.customerLayer = this.add.container(0, 0).setDepth(20);
-    this.foregroundLayer = this.add.container(0, 0).setDepth(30);
-    this.fxLayer = this.add.container(0, 0).setDepth(40);
-  }
-
-  createEnvironment() {
+  buildShopInterior() {
     const { width, height } = this.scale;
+    this.cameras.main.setBackgroundColor('#f7ead7');
+    this.character = this.registry.get('selectedCharacter');
 
-    for (let row = 0; row < 8; row += 1) {
-      for (let col = 0; col < 6; col += 1) {
-        const color = (row + col) % 2 === 0 ? 0xf8d4aa : 0xf2c793;
-        const tile = this.add.rectangle(col * 96 + 48, row * 88 + 44, 96, 88, color).setStrokeStyle(1, 0xe9b780);
-        this.bgLayer.add(tile);
-      }
-    }
+    this.add.rectangle(width / 2, height * 0.42, width - 56, height * 0.42, 0xf1dcc2).setStrokeStyle(2, 0xe0b07e);
+    this.add.rectangle(width / 2, height * 0.8, width - 56, 178, 0xedd2b1).setStrokeStyle(2, 0xe0b07e);
 
-    const signGlow = this.add
-      .text(width / 2, 84, 'Kebab Empire', {
-        fontSize: '58px',
-        color: '#ffb4af',
+    this.customerText = this.add
+      .text(28, 76, '', {
+        fontSize: '24px',
+        color: '#4e2f19',
         fontStyle: 'bold',
-        stroke: '#ff5e57',
-        strokeThickness: 18,
       })
-      .setOrigin(0.5)
-      .setAlpha(0.35);
+      .setOrigin(0, 0.5);
 
-    this.neonText = this.add
-      .text(width / 2, 84, 'Kebab Empire', {
-        fontSize: '55px',
-        color: '#fff8ea',
+    this.orderText = this.add
+      .text(width / 2, 116, '', {
+        fontSize: '24px',
+        color: '#4e2f19',
         fontStyle: 'bold',
-        stroke: '#ff5e57',
-        strokeThickness: 8,
+        align: 'center',
+        wordWrap: { width: width * 0.75 },
       })
       .setOrigin(0.5);
 
-    this.tweens.add({ targets: [signGlow, this.neonText], alpha: { from: 0.95, to: 0.62 }, duration: 1400, yoyo: true, repeat: -1 });
-    this.bgLayer.add([signGlow, this.neonText]);
+    this.patienceBarBg = this.add.rectangle(width / 2, 154, width * 0.56, 18, 0xffffff).setStrokeStyle(2, 0xd3a46e);
+    this.patienceBar = this.add.rectangle(width / 2 - width * 0.28, 154, width * 0.56, 18, 0x77c06f).setOrigin(0, 0.5);
 
-    this.menuBoard = this.add.rectangle(width / 2, 154, width * 0.72, 66, 0x6e3a22).setStrokeStyle(5, 0xfce8ca);
-    this.menuBoardText = this.add
-      .text(width / 2, 154, '--', {
-        fontSize: '24px',
-        color: '#ffe7c2',
-        fontStyle: 'bold',
+    this.stackText = this.add
+      .text(width / 2, height * 0.46, 'Current Stack: (empty)', {
+        fontSize: '26px',
+        color: '#6c4828',
+        align: 'center',
+        wordWrap: { width: width * 0.38 },
       })
       .setOrigin(0.5);
     this.bgLayer.add([this.menuBoard, this.menuBoardText]);
@@ -166,77 +136,81 @@ export default class GameScene extends Phaser.Scene {
     const { width, height } = this.scale;
 
     this.feedbackText = this.add
-      .text(width / 2, 330, '', {
-        fontSize: '32px',
-        color: '#fff8ef',
-        stroke: '#6e3a22',
-        strokeThickness: 8,
+      .text(width / 2, height * 0.54, '', {
+        fontSize: '30px',
+        color: '#3b8f43',
         fontStyle: 'bold',
       })
       .setOrigin(0.5)
       .setDepth(42)
       .setAlpha(0);
 
-    this.globalPatienceBarBg = this.add.rectangle(width / 2, 294, width * 0.8, 18, 0xffffff).setStrokeStyle(3, 0x8e5a37);
-    this.globalPatienceBar = this.add.rectangle(width * 0.1, 294, width * 0.8, 18, 0x77c06f).setOrigin(0, 0.5);
-    this.foregroundLayer.add([this.globalPatienceBarBg, this.globalPatienceBar]);
-
-    this.plateShadow = this.add.ellipse(width * 0.34, height * 0.66, 200, 34, 0x000000, 0.2);
-    this.plate = this.add.ellipse(width * 0.34, height * 0.64, 190, 32, 0xf8f8f8).setStrokeStyle(4, 0xb0b0b0);
-    this.foregroundLayer.add([this.plateShadow, this.plate]);
-
-    this.stackText = this.add
-      .text(width * 0.34, height * 0.73, 'Stack: (empty)', {
-        fontSize: '22px',
-        color: '#fff8ef',
-        stroke: '#5b311e',
-        strokeThickness: 6,
-        align: 'center',
-        wordWrap: { width: width * 0.48 },
-      })
-      .setOrigin(0.5);
-    this.foregroundLayer.add(this.stackText);
+    this.createActionButtons();
+    this.spawnNextOrder();
+    this.emitUiUpdate();
   }
 
-  createControls() {
+  createActionButtons() {
     const { width, height } = this.scale;
-    this.serveButton = this.createButton(width * 0.75, height * 0.61, 192, 90, 'Serve', 0x3f9d51);
-    this.clearButton = this.createButton(width * 0.75, height * 0.72, 192, 74, 'Clear', 0xa45f3a);
+    const serveButton = this.createButton(width * 0.23, height * 0.64, 180, 64, 'Serve', 0x3d9543, '#ffffff');
+    const clearButton = this.createButton(width * 0.43, height * 0.64, 180, 64, 'Clear', 0xa56038, '#ffffff');
+
+    serveButton.button.on('pointerdown', () => this.serveOrder());
+    clearButton.button.on('pointerdown', () => {
+      this.playerStack = [];
+      this.stackText.setText('Current Stack: (empty)');
+      this.playSfx('clear');
+    });
+
+    this.buttonPanelY = height * 0.79;
+    this.buttonPanelWidth = width - 72;
+  }
+
+  createIngredientButtons(options) {
+    this.ingredientButtons.forEach(({ button, label }) => {
+      button.destroy();
+      label.destroy();
+    });
+    this.ingredientButtons = [];
+
+    const { width } = this.scale;
+    const columns = 3;
+    const rows = Math.ceil(options.length / columns);
+    const gapX = 14;
+    const gapY = 12;
+    const panelWidth = this.buttonPanelWidth;
+    const btnWidth = Math.min(240, (panelWidth - gapX * (columns - 1)) / columns);
+    const btnHeight = rows > 1 ? 56 : 62;
+    const startX = width / 2 - panelWidth / 2 + btnWidth / 2;
+
+    options.forEach((ingredient, idx) => {
+      const col = idx % columns;
+      const row = Math.floor(idx / columns);
+      const x = startX + col * (btnWidth + gapX);
+      const y = this.buttonPanelY + row * (btnHeight + gapY);
+      const fillColor = INGREDIENTS[ingredient]?.color ?? 0xd97a2f;
+
+      const button = this.add
+        .rectangle(x, y, btnWidth, btnHeight, fillColor)
+        .setStrokeStyle(2, 0xfff5ea)
+        .setInteractive({ useHandCursor: true });
+
+    this.serveButton = this.createButton(width * 0.74, height * 0.56, 190, 88, 'Serve', 0x3f9d51);
+    this.clearButton = this.createButton(width * 0.74, height * 0.67, 190, 74, 'Clear', 0xa45f3a);
 
     this.serveButton.bg.on('pointerdown', () => this.serveOrder());
     this.clearButton.bg.on('pointerdown', () => {
       this.playerStack = [];
       this.refreshStackVisuals();
       this.playSfx('clear');
-      this.updateServeButtonState();
     });
 
-    this.buttonPanelY = height * 0.81;
+    this.buttonPanelY = height * 0.79;
     this.buttonPanelWidth = width - 36;
   }
 
-  createButton(x, y, w, h, text, color) {
-    const c = this.add.container(x, y).setDepth(35);
-    const glow = this.add.rectangle(0, 0, w + 20, h + 20, 0xfff2c6, 0.15);
-    const bg = this.add.rectangle(0, 0, w, h, color).setStrokeStyle(5, 0xffffff).setInteractive({ useHandCursor: true });
-    const label = this.add
-      .text(0, 0, text, {
-        fontSize: '34px',
-        color: '#fff',
-        fontStyle: 'bold',
-        stroke: '#6c341f',
-        strokeThickness: 5,
-      })
-      .setOrigin(0.5);
-
-    c.add([glow, bg, label]);
-    bg.on('pointerover', () => this.tweens.add({ targets: c, scale: 1.05, duration: 100 }));
-    bg.on('pointerout', () => this.tweens.add({ targets: c, scale: 1, duration: 100 }));
-    return { container: c, bg, label, glow };
-  }
-
   createIngredientButtons(options) {
-    this.ingredientButtons.forEach((button) => button.container.destroy());
+    this.ingredientButtons.forEach((item) => item.container.destroy());
     this.ingredientButtons = [];
 
     const { width } = this.scale;
@@ -244,7 +218,7 @@ export default class GameScene extends Phaser.Scene {
     const gapX = 16;
     const gapY = 14;
     const btnWidth = (this.buttonPanelWidth - gapX) / columns;
-    const btnHeight = 72;
+    const btnHeight = 70;
     const startX = width / 2 - this.buttonPanelWidth / 2 + btnWidth / 2;
 
     options.forEach((ingredient, idx) => {
@@ -254,315 +228,131 @@ export default class GameScene extends Phaser.Scene {
       const y = this.buttonPanelY + row * (btnHeight + gapY);
       const color = INGREDIENTS[ingredient]?.color ?? 0xd97a2f;
 
-      const c = this.add.container(x, y).setDepth(36);
-      const shadow = this.add.rectangle(0, 6, btnWidth, btnHeight, 0x000000, 0.18);
+      const c = this.add.container(x, y);
+      const shadow = this.add.rectangle(0, 6, btnWidth, btnHeight, 0x000000, 0.18).setStrokeStyle(0, 0x000000);
       const bg = this.add.rectangle(0, 0, btnWidth, btnHeight, color).setStrokeStyle(4, 0xffffff).setInteractive({ useHandCursor: true });
       const label = this.add
         .text(0, 0, ingredient, {
-          fontSize: '24px',
+          fontSize: '25px',
           color: '#fff',
           fontStyle: 'bold',
-          stroke: '#6a2e1b',
-          strokeThickness: 4,
-          wordWrap: { width: btnWidth - 20 },
           align: 'center',
+          wordWrap: { width: btnWidth - 18 },
         })
         .setOrigin(0.5);
 
-      c.add([shadow, bg, label]);
+      button.on('pointerdown', () => this.handleIngredientPick(ingredient));
+      button.on('pointerover', () => this.tweens.add({ targets: [button, label], scale: 1.04, duration: 90 }));
+      button.on('pointerout', () => this.tweens.add({ targets: [button, label], scale: 1, duration: 90 }));
 
-      bg.on('pointerdown', () => {
-        this.handleIngredientPick(ingredient);
-        this.tweens.add({ targets: c, scale: 1.08, duration: 90, yoyo: true });
-        this.emitPopParticles(x, y);
-      });
-      bg.on('pointerover', () => this.tweens.add({ targets: c, scale: 1.04, duration: 80 }));
-      bg.on('pointerout', () => this.tweens.add({ targets: c, scale: 1, duration: 80 }));
-
-      this.ingredientButtons.push({ container: c, bg, label });
+      this.ingredientButtons.push({ button, label });
     });
   }
 
-  createCustomerAtEntrance() {
-    const { height } = this.scale;
-    const container = this.add.container(-80, height * 0.49).setDepth(22);
+  createButton(x, y, w, h, text, color, textColor) {
+    const button = this.add
+      .rectangle(x, y, w, h, color)
+      .setStrokeStyle(2, 0xffffff)
+      .setInteractive({ useHandCursor: true });
 
-    const glow = this.add.circle(0, 0, 58, 0x75c97e, 0.22);
-    const body = this.add.rectangle(0, 36, 84, 94, 0x6ea7c6).setStrokeStyle(4, 0x2d1e16);
-    const head = this.add.circle(0, -18, 36, 0xffd3af).setStrokeStyle(4, 0x5b2b1d);
-    const eyeL = this.add.circle(-11, -24, 4, 0x362117);
-    const eyeR = this.add.circle(11, -24, 4, 0x362117);
-    const mouth = this.add.arc(0, -6, 10, 20, 160, false, 0x362117).setLineWidth(3, 3);
+    const label = this.add
+      .text(x, y, text, {
+        fontSize: '30px',
+        color: textColor,
+        fontStyle: 'bold',
+      })
+      .setOrigin(0.5);
 
-    const bubble = this.add.container(0, -108).setScale(0.2).setAlpha(0);
-    const bubbleBg = this.add.rectangle(0, 0, 220, 88, 0xffffff).setStrokeStyle(4, 0x6f4a35);
-    const bubbleTail = this.add.triangle(-60, 42, 0, 0, 22, 8, 8, 20, 0xffffff).setStrokeStyle(3, 0x6f4a35);
-    const iconRow = this.add.container(-88, 0);
+    button.on('pointerover', () => this.tweens.add({ targets: [button, label], scale: 1.04, duration: 100 }));
+    button.on('pointerout', () => this.tweens.add({ targets: [button, label], scale: 1, duration: 100 }));
 
-    bubble.add([bubbleBg, bubbleTail, iconRow]);
-    container.add([glow, body, head, eyeL, eyeR, mouth, bubble]);
-
-    this.customerLayer.add(container);
-
-    return {
-      container,
-      glow,
-      mouth,
-      bubble,
-      iconRow,
-      patienceBg: this.add.rectangle(0, -162, 160, 12, 0xffffff).setStrokeStyle(3, 0x6a4b3b).setDepth(23),
-      patienceBar: this.add.rectangle(-80, -162, 160, 12, 0x7bd37f).setOrigin(0, 0.5).setDepth(24),
-    };
-  }
-
-  enterCustomerAndSetupOrder() {
-    this.animateDoorOpen();
-    this.customerVisual = this.createCustomerAtEntrance();
-
-    this.customerVisual.patienceBg.setPosition(-80, this.scale.height * 0.49 - 162);
-    this.customerVisual.patienceBar.setPosition(-160, this.scale.height * 0.49 - 162);
-
-    this.tweens.add({
-      targets: this.customerVisual.container,
-      x: 130,
-      duration: 680,
-      ease: 'Sine.out',
-      onUpdate: () => {
-        const cx = this.customerVisual.container.x;
-        this.customerVisual.patienceBg.x = cx;
-        this.customerVisual.patienceBar.x = cx - 80;
-      },
-      onComplete: () => {
-        this.tweens.add({ targets: this.customerVisual.container, y: this.customerVisual.container.y - 8, duration: 120, yoyo: true });
-        this.showOrderBubble();
-        this.isTransitioningCustomer = false;
-      },
-    });
-  }
-
-  showOrderBubble() {
-    if (!this.customerVisual || !this.activeOrder) return;
-
-    this.customerVisual.iconRow.removeAll(true);
-    this.activeOrder.ingredients.forEach((ingredient, i) => {
-      const color = INGREDIENTS[ingredient]?.color ?? 0xd97a2f;
-      const x = i * 42;
-      const icon = this.add.circle(x, 0, 16, color).setStrokeStyle(3, 0xffffff);
-      const dot = this.add.text(x, 0, ingredient[0], { fontSize: '14px', color: '#fff', fontStyle: 'bold' }).setOrigin(0.5);
-      this.customerVisual.iconRow.add([icon, dot]);
-    });
-
-    this.customerVisual.bubble.x = -((this.activeOrder.ingredients.length - 1) * 21);
-    this.tweens.add({ targets: this.customerVisual.bubble, alpha: 1, scale: 1, duration: 230, ease: 'Back.out' });
-  }
-
-  spawnCustomerAndOrder() {
-    this.activeCustomer = Phaser.Utils.Array.GetRandom(CUSTOMER_TYPES);
-    this.activeOrder = this.pickMenuItemForLevel();
-    const patienceTotal = this.basePatienceSeconds * this.character.patienceMultiplier * this.activeCustomer.patienceMultiplier;
-
-    this.playerStack = [];
-    this.patienceRemaining = Phaser.Math.Clamp(Math.floor(patienceTotal), 8, 45);
-    this.activeOrder.timeLimit = this.patienceRemaining;
-    this.menuBoardText.setText(this.activeOrder.name);
-
-    const pool = this.buildIngredientPool(this.activeOrder.ingredients, 8);
-    this.createIngredientButtons(pool);
-    this.refreshStackVisuals();
-    this.updateServeButtonState();
-
-    this.isTransitioningCustomer = true;
-    this.enterCustomerAndSetupOrder();
-    this.emitUiUpdate();
+    return { button, label };
   }
 
   handleIngredientPick(ingredient) {
     if (this.isTransitioningCustomer) return;
 
     const now = this.time.now;
-    const cooldown = 200 / this.character.prepMultiplier;
-    if (now - this.lastActionTime < cooldown) return;
+    const cooldown = 210 / this.character.prepMultiplier;
+    if (now - this.lastActionTime < cooldown) {
+      return;
+    }
+    this.lastActionTime = now;
 
     this.lastActionTime = now;
     this.playerStack.push(ingredient);
-    this.refreshStackVisuals();
-    this.updateServeButtonState();
+    this.stackText.setText(`Current Stack: ${this.playerStack.join(' + ')}`);
     this.playSfx('ingredient');
   }
 
-  refreshStackVisuals() {
-    this.stackSprites.forEach((s) => s.destroy());
-    this.stackSprites = [];
-
-    const baseX = this.plate.x;
-    const baseY = this.plate.y - 6;
-    const stackItems = this.playerStack.slice(-8);
-
-    stackItems.forEach((ingredient, i) => {
-      const y = baseY - i * 26;
-      const color = INGREDIENTS[ingredient]?.color ?? 0xd97a2f;
-      const shadow = this.add.ellipse(baseX, y + 10, 148, 12, 0x000000, 0.16).setDepth(31);
-      const plate = this.add.rectangle(baseX, y, 160, 22, color).setStrokeStyle(3, 0xffffff).setDepth(32);
-      const label = this.add
-        .text(baseX, y, ingredient, {
-          fontSize: '15px',
-          color: '#fff',
-          fontStyle: 'bold',
-          stroke: '#6b3a24',
-          strokeThickness: 3,
-        })
-        .setOrigin(0.5)
-        .setDepth(33);
-      this.stackSprites.push(shadow, plate, label);
-    });
-
-    this.stackText.setText(this.playerStack.length ? `Stack: ${this.playerStack.join(' • ')}` : 'Stack: (empty)');
-  }
-
-  emitPopParticles(x, y) {
-    const emitter = this.add.particles(x, y, 'pop-dot', {
-      speed: { min: 40, max: 110 },
-      angle: { min: 0, max: 360 },
-      lifespan: 260,
-      scale: { start: 1, end: 0 },
-      quantity: 8,
-      gravityY: 80,
-    }).setDepth(45);
-
-    this.time.delayedCall(240, () => emitter.destroy());
-  }
-
-  updateServeButtonState() {
-    const target = this.activeOrder?.ingredients ?? [];
-    const correctLength = this.playerStack.length === target.length;
-    const correctSeq = correctLength && this.playerStack.every((item, i) => item === target[i]);
-
-    this.serveButton.glow.fillColor = correctSeq ? 0xffef7a : 0xfff2c6;
-    this.serveButton.glow.alpha = correctSeq ? 0.5 : 0.15;
-  }
-
   serveOrder() {
-    if (this.isTransitioningCustomer || !this.activeOrder) return;
-    if (this.playerStack.length === 0) {
-      this.showFeedback('Build your kebab first!', '#a14d22');
+    if (!this.activeOrder || this.playerStack.length === 0) {
+      this.showFeedback('Build the order first!', '#a14d22');
       return;
     }
 
     const target = this.activeOrder.ingredients;
-    const isCorrect = this.playerStack.length === target.length && this.playerStack.every((item, i) => item === target[i]);
+    const isCorrect =
+      this.playerStack.length === target.length &&
+      this.playerStack.every((ingredient, index) => ingredient === target[index]);
 
     if (isCorrect) {
       this.applyOrderSuccess();
-    } else {
-      this.applyOrderMistake();
+      return;
     }
+
+    this.applyOrderFailure('Wrong recipe served.', 'mistake');
   }
 
   applyOrderSuccess() {
     const timeRatio = Phaser.Math.Clamp(this.patienceRemaining / this.activeOrder.timeLimit, 0, 1);
     const difficultyScore = 60 + this.activeOrder.difficulty * 40;
-    const speedBonus = Math.floor(90 * timeRatio);
+    const speedBonus = Math.floor(80 * timeRatio);
     const comboMultiplier = 1 + (this.combo - 1) * 0.35;
     const gained = Math.floor(difficultyScore * comboMultiplier + speedBonus);
 
     this.score += gained;
     this.completedOrders += 1;
     this.combo = Math.min(this.combo + 0.2, 5);
-    if (this.completedOrders % 3 === 0) this.level += 1;
 
     this.play('serve-success');
     this.playSfx('success');
     this.showMoneyPop(`+$${gained}`);
     this.showFeedback('Great serve!', '#2f9144');
 
-    if (this.customerVisual) {
-      this.customerVisual.mouth.setStartAngle(20).setEndAngle(160).setAnticlockwise(false);
-    }
-
-    this.exitCustomerToRight(() => {
-      this.cleanupCustomerVisual();
-      this.spawnCustomerAndOrder();
-    });
+    this.showFloatingMoney(`+$${gained}`);
+    this.showFeedback('Perfect serve!', '#3b8f43');
+    this.playSfx('success');
+    this.spawnNextOrder();
   }
 
-  applyOrderMistake() {
-    this.play('mistake');
-    this.playSfx('fail');
+  applyOrderFailure(message, reason = 'mistake') {
+    const basePenalty = reason === 'timeout' ? 25 : 45;
+    const penalty = Math.floor((basePenalty + this.level * 4) * this.character.mistakePenaltyMultiplier);
+    this.score = Math.max(0, this.score - penalty);
     this.combo = 1;
 
-    const sharpDrop = Math.max(2.5, this.activeOrder.timeLimit * 0.3);
-    this.patienceRemaining -= sharpDrop;
-    this.showFeedback('Wrong recipe!', '#c43e34');
+    this.showFeedback(`${message} (-$${penalty})`, '#b84433');
+    this.playSfx('fail');
+    this.spawnNextOrder();
+  }
 
-    this.flashRedOverlay();
-    this.shakeCustomerAngry();
+  spawnNextOrder() {
+    this.activeCustomer = Phaser.Utils.Array.GetRandom(CUSTOMER_TYPES);
+    this.activeOrder = this.pickMenuItemForLevel();
 
-    if (this.patienceRemaining <= 0) {
-      const penalty = Math.floor((24 + this.level * 4) * this.character.mistakePenaltyMultiplier);
-      this.score = Math.max(0, this.score - penalty);
-      this.exitCustomerToRight(() => {
-        this.cleanupCustomerVisual();
-        this.spawnCustomerAndOrder();
-      });
-    }
+    const patienceTotal = this.basePatienceSeconds * this.character.patienceMultiplier * this.activeCustomer.patienceMultiplier;
+    this.activeOrder.timeLimit = Phaser.Math.Clamp(Math.floor(patienceTotal), 8, 45);
 
+    this.playerStack = [];
+    this.patienceRemaining = this.activeOrder.timeLimit;
+    this.stackText.setText('Current Stack: (empty)');
+    this.orderText.setText(`Order (${this.matchRule}): ${this.activeOrder.ingredients.join(' + ')}`);
+    this.customerText.setText(`Customer: ${this.activeCustomer.name}`);
+
+    const ingredientPool = this.buildIngredientPool(this.activeOrder.ingredients, 6);
+    this.createIngredientButtons(ingredientPool);
     this.emitUiUpdate();
-  }
-
-  shakeCustomerAngry() {
-    if (!this.customerVisual) return;
-    this.tweens.add({ targets: this.customerVisual.container, x: this.customerVisual.container.x + 6, duration: 50, yoyo: true, repeat: 4 });
-    this.customerVisual.mouth.setStartAngle(200).setEndAngle(340).setAnticlockwise(false);
-  }
-
-  flashRedOverlay() {
-    const { width, height } = this.scale;
-    const flash = this.add.rectangle(width / 2, height / 2, width, height, 0xff0000, 0.22).setDepth(48);
-    this.tweens.add({ targets: flash, alpha: 0, duration: 180, onComplete: () => flash.destroy() });
-  }
-
-  showMoneyPop(text) {
-    const pop = this.add
-      .text(this.scale.width * 0.6, this.scale.height * 0.47, text, {
-        fontSize: '34px',
-        color: '#e2ff9f',
-        stroke: '#2b7d34',
-        strokeThickness: 7,
-        fontStyle: 'bold',
-      })
-      .setOrigin(0.5)
-      .setDepth(46);
-
-    this.tweens.add({ targets: pop, y: pop.y - 46, alpha: 0, duration: 760, onComplete: () => pop.destroy() });
-  }
-
-  exitCustomerToRight(onComplete) {
-    if (!this.customerVisual) {
-      onComplete();
-      return;
-    }
-
-    this.isTransitioningCustomer = true;
-    this.tweens.add({
-      targets: this.customerVisual.container,
-      x: this.scale.width + 90,
-      duration: 620,
-      ease: 'Sine.in',
-      onUpdate: () => {
-        const cx = this.customerVisual.container.x;
-        this.customerVisual.patienceBg.x = cx;
-        this.customerVisual.patienceBar.x = cx - 80;
-      },
-      onComplete,
-    });
-  }
-
-  cleanupCustomerVisual() {
-    if (!this.customerVisual) return;
-    this.customerVisual.patienceBg.destroy();
-    this.customerVisual.patienceBar.destroy();
-    this.customerVisual.container.destroy();
-    this.customerVisual = null;
   }
 
   pickMenuItemForLevel() {
@@ -573,8 +363,9 @@ export default class GameScene extends Phaser.Scene {
       return { item, weight: levelWeight * difficultyWeight };
     });
 
-    const total = weighted.reduce((sum, w) => sum + w.weight, 0);
-    let roll = Math.random() * total;
+    const totalWeight = weighted.reduce((sum, entry) => sum + entry.weight, 0);
+    let roll = Math.random() * totalWeight;
+
     for (const entry of weighted) {
       roll -= entry.weight;
       if (roll <= 0) {
@@ -596,37 +387,59 @@ export default class GameScene extends Phaser.Scene {
     };
   }
 
-  buildIngredientPool(required, targetCount) {
-    const pool = new Set(required);
-    const extras = Object.keys(INGREDIENTS).filter((name) => !pool.has(name));
-    while (pool.size < targetCount && extras.length) {
-      const idx = Phaser.Math.Between(0, extras.length - 1);
-      pool.add(extras[idx]);
-      extras.splice(idx, 1);
+  buildIngredientPool(requiredIngredients, targetCount) {
+    const pool = new Set(requiredIngredients);
+    const candidates = Object.keys(INGREDIENTS).filter((ingredient) => !pool.has(ingredient));
+
+    while (pool.size < targetCount && candidates.length > 0) {
+      const index = Phaser.Math.Between(0, candidates.length - 1);
+      pool.add(candidates[index]);
+      candidates.splice(index, 1);
     }
+
     return Phaser.Utils.Array.Shuffle(Array.from(pool));
   }
 
-  showFeedback(message, color) {
-    this.feedbackText.setText(message).setColor(color).setAlpha(1).setScale(1);
-    this.tweens.killTweensOf(this.feedbackText);
-    this.tweens.add({
-      targets: this.feedbackText,
-      y: this.feedbackText.y - 10,
-      alpha: 0,
-      duration: 900,
-      delay: 120,
-      onComplete: () => this.feedbackText.setY(330),
-    });
+  showFloatingMoney(label) {
+    const text = this.add
+      .text(this.scale.width / 2, this.scale.height * 0.6, label, {
+        fontSize: '30px',
+        color: '#2a8a2f',
+        fontStyle: 'bold',
+      })
+      .setOrigin(0.5)
+      .setDepth(46);
+
+    this.tweens.add({ targets: pop, y: pop.y - 46, alpha: 0, duration: 760, onComplete: () => pop.destroy() });
   }
 
-  play(name) {
-    // Placeholder event hook for future audio integration.
-    return name;
+  exitCustomerToRight(onComplete) {
+    if (!this.customerVisual) {
+      onComplete();
+      return;
+    }
+
+    const patienceTotal = this.basePatienceSeconds * this.character.patienceMultiplier * this.activeCustomer.patienceMultiplier;
+    this.activeOrder.timeLimit = Phaser.Math.Clamp(Math.floor(patienceTotal), 8, 45);
+
+    this.playerStack = [];
+    this.patienceRemaining = this.activeOrder.timeLimit;
+
+    this.menuBoardText.setText(`${this.activeOrder.name}`);
+    this.orderText.setText(`Required: ${this.activeOrder.ingredients.join(' + ')}`);
+
+    const borderColor = this.activeCustomer.patienceMultiplier >= 1 ? 0x75c97e : 0xe27266;
+    this.customerOutline.fillColor = borderColor;
+
+    const pool = this.buildIngredientPool(this.activeOrder.ingredients, 8);
+    this.createIngredientButtons(pool);
+    this.refreshStackVisuals();
+    this.updateServeButtonState();
+    this.emitUiUpdate();
   }
 
   playSfx(_name) {
-    // Additional SFX hook for future free audio assets.
+    // Placeholder hook for future free SFX integration.
   }
 
   emitUiUpdate() {
@@ -641,39 +454,26 @@ export default class GameScene extends Phaser.Scene {
   }
 
   update(_, delta) {
-    if (!this.activeOrder || this.isTransitioningCustomer) return;
+    if (!this.activeOrder) return;
 
     this.patienceRemaining -= delta / 1000;
     if (this.patienceRemaining <= 0) {
-      const penalty = Math.floor((24 + this.level * 4) * this.character.mistakePenaltyMultiplier);
-      this.score = Math.max(0, this.score - penalty);
-      this.combo = 1;
-      this.showFeedback('Customer left!', '#be4636');
-      this.exitCustomerToRight(() => {
-        this.cleanupCustomerVisual();
-        this.spawnCustomerAndOrder();
-      });
+      this.applyOrderFailure('Customer left!', 'timeout');
       return;
     }
 
-    this.updatePatienceBars();
+    this.updatePatienceBar();
     this.emitUiUpdate();
   }
 
-  updatePatienceBars() {
-    if (!this.activeOrder) return;
-
+  updatePatienceBar() {
+    const fullWidth = this.scale.width * 0.56;
     const ratio = Phaser.Math.Clamp(this.patienceRemaining / this.activeOrder.timeLimit, 0, 1);
-    const full = this.scale.width * 0.8;
+    this.patienceBar.width = full * ratio;
+    this.customerPatienceBar.width = 84 * ratio;
+
     const color = ratio < 0.3 ? 0xd95a4d : ratio < 0.6 ? 0xddad49 : 0x77c06f;
-
-    this.globalPatienceBar.width = full * ratio;
-    this.globalPatienceBar.fillColor = color;
-
-    if (this.customerVisual) {
-      this.customerVisual.patienceBar.width = 160 * ratio;
-      this.customerVisual.patienceBar.fillColor = color;
-      this.customerVisual.glow.fillColor = color;
-    }
+    this.patienceBar.fillColor = color;
+    this.customerPatienceBar.fillColor = color;
   }
 }
