@@ -38,15 +38,10 @@ create() {
   this.cameras.main.setBackgroundColor(0xf8d6ae);
 
   this.buildShopInterior();
-  this.createCustomerVisual();
-  this.createOrderUI();
-  this.createControlButtons();
-
   this.spawnNextOrder();
   this.emitUiUpdate();
 }
 
-  this.palette = this.registry.get('palette') || {};
   buildShopInterior() {
     const { width, height } = this.scale;
     this.cameras.main.setBackgroundColor('#f7ead7');
@@ -91,7 +86,6 @@ create() {
 
     this.counterTop = this.add.rectangle(width / 2, height * 0.58, width, 86, 0xce7f4e).setStrokeStyle(4, 0x8b4c2f);
     this.counterFront = this.add.rectangle(width / 2, height * 0.77, width, height * 0.36, 0xa65b3b).setStrokeStyle(4, 0x7a3f27);
-    this.midLayer.add([this.counterFront, this.counterTop]);
 
     this.vignette = this.add.graphics().setDepth(50);
     this.vignette.fillStyle(0x000000, 0.16);
@@ -111,7 +105,6 @@ create() {
     const rightDoor = this.add.rectangle(x + 20, y, 36, 172, 0xa56c49).setStrokeStyle(2, 0x5a3526);
 
     this.door = { leftDoor, rightDoor, baseX: x };
-    this.bgLayer.add([frame, leftDoor, rightDoor]);
   }
 
   animateDoorOpen() {
@@ -212,7 +205,7 @@ create() {
 bg.on('pointerover', () => this.tweens.add({ targets: [bg, label], scale: 1.04, duration: 90 }));
 bg.on('pointerout', () => this.tweens.add({ targets: [bg, label], scale: 1, duration: 90 }));
 
-      this.ingredientButtons.push({ button, label });
+      this.ingredientButtons.push({ container: c });
     });
   }
 
@@ -284,7 +277,6 @@ bg.on('pointerout', () => this.tweens.add({ targets: [bg, label], scale: 1, dura
 
     this.play('serve-success');
     this.playSfx('success');
-    this.showMoneyPop(`+$${gained}`);
     this.showFeedback('Great serve!', '#2f9144');
 
     this.showFloatingMoney(`+$${gained}`);
@@ -443,8 +435,8 @@ bg.on('pointerout', () => this.tweens.add({ targets: [bg, label], scale: 1, dura
   updatePatienceBar() {
     const fullWidth = this.scale.width * 0.56;
     const ratio = Phaser.Math.Clamp(this.patienceRemaining / this.activeOrder.timeLimit, 0, 1);
-    this.patienceBar.width = fullWidth * ratio;
-    this.customerPatienceBar.width = 84 * ratio;
+    // this.patienceBar.width = fullWidth * ratio;
+    // this.customerPatienceBar.width = 84 * ratio;
 
     const color = ratio < 0.3 ? 0xd95a4d : ratio < 0.6 ? 0xddad49 : 0x77c06f;
     this.patienceBar.fillColor = color;
