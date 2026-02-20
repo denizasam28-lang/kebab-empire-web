@@ -79,7 +79,6 @@ create() {
         wordWrap: { width: width * 0.38 },
       })
       .setOrigin(0.5);
-    this.bgLayer.add([this.menuBoard, this.menuBoardText]);
 
     this.createDoor();
     this.createDonerMachine(width * 0.84, height * 0.45);
@@ -118,8 +117,6 @@ create() {
     const pole = this.add.rectangle(x, y + 18, 24, 178, 0x6e6e70).setStrokeStyle(4, 0x48484a);
     this.doner = this.add.ellipse(x, y, 76, 160, 0xd26036).setStrokeStyle(4, 0x6a321f);
     this.ember = this.add.ellipse(x, y + 86, 52, 20, 0xff8a3d, 0.85);
-
-    this.midLayer.add([stand, pole, this.doner, this.ember]);
 
     this.tweens.add({ targets: this.doner, scaleX: { from: 1, to: 0.84 }, duration: 780, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
     this.tweens.add({ targets: this.ember, alpha: { from: 0.9, to: 0.45 }, duration: 560, yoyo: true, repeat: -1 });
@@ -306,8 +303,13 @@ bg.on('pointerout', () => this.tweens.add({ targets: [bg, label], scale: 1, dura
     this.playerStack = [];
     this.patienceRemaining = this.activeOrder.timeLimit;
     this.stackText.setText('Current Stack: (empty)');
-    this.orderText.setText(`Order (${this.matchRule}): ${this.activeOrder.ingredients.join(' + ')}`);
-    this.customerText.setText(`Customer: ${this.activeCustomer.name}`);
+  this.orderText.setText(
+  `Order (${this.matchRule}): ${(this.activeOrder?.ingredients || []).join(' + ')}`
+);
+
+this.customerText.setText(
+  `Customer: ${this.activeCustomer?.name || 'Guest'}`
+);
 
     const ingredientPool = this.buildIngredientPool(this.activeOrder.ingredients, 6);
     this.createIngredientButtons(ingredientPool);
@@ -440,6 +442,6 @@ bg.on('pointerout', () => this.tweens.add({ targets: [bg, label], scale: 1, dura
 
     const color = ratio < 0.3 ? 0xd95a4d : ratio < 0.6 ? 0xddad49 : 0x77c06f;
     this.patienceBar.fillColor = color;
-    this.customerPatienceBar.fillColor = color;
+    // this.customerPatienceBar.fillColor = color;
   }
 }
