@@ -12,7 +12,10 @@ export default class GameScene extends Phaser.Scene {
     this.activeOrder = null;
     this.activeCustomer = null;
     this.playerStack = [];
+    this.basePatienceSeconds = 24;
     this.patienceRemaining = 0;
+    this.ingredientButtons = [];
+    this.stackSprites = [];
     this.lastActionTime = 0;
     this.basePatienceSeconds = 24;
     this.matchRule = 'exact-sequence';
@@ -20,6 +23,20 @@ export default class GameScene extends Phaser.Scene {
   }
 
   create() {
+    this.character = this.registry.get('selectedCharacter');
+    this.palette = this.registry.get('palette');
+    this.cameras.main.setBackgroundColor(0xf8d6ae);
+
+    this.buildShopInterior();
+    this.createCustomerVisual();
+    this.createOrderUI();
+    this.createControlButtons();
+
+    this.spawnNextOrder();
+    this.emitUiUpdate();
+  }
+
+  buildShopInterior() {
     const { width, height } = this.scale;
     this.cameras.main.setBackgroundColor('#f7ead7');
     this.character = this.registry.get('selectedCharacter');
@@ -41,6 +58,7 @@ export default class GameScene extends Phaser.Scene {
         color: '#4e2f19',
         fontStyle: 'bold',
         align: 'center',
+        wordWrap: { width: width * 0.75 },
       })
       .setOrigin(0.5);
 
@@ -52,6 +70,7 @@ export default class GameScene extends Phaser.Scene {
         fontSize: '26px',
         color: '#6c4828',
         align: 'center',
+        wordWrap: { width: width * 0.38 },
       })
       .setOrigin(0.5);
 
@@ -114,9 +133,45 @@ export default class GameScene extends Phaser.Scene {
         .setStrokeStyle(2, 0xfff5ea)
         .setInteractive({ useHandCursor: true });
 
+    this.serveButton = this.createButton(width * 0.74, height * 0.56, 190, 88, 'Serve', 0x3f9d51);
+    this.clearButton = this.createButton(width * 0.74, height * 0.67, 190, 74, 'Clear', 0xa45f3a);
+
+    this.serveButton.bg.on('pointerdown', () => this.serveOrder());
+    this.clearButton.bg.on('pointerdown', () => {
+      this.playerStack = [];
+      this.refreshStackVisuals();
+      this.playSfx('clear');
+    });
+
+    this.buttonPanelY = height * 0.79;
+    this.buttonPanelWidth = width - 36;
+  }
+
+  createIngredientButtons(options) {
+    this.ingredientButtons.forEach((item) => item.container.destroy());
+    this.ingredientButtons = [];
+
+    const { width } = this.scale;
+    const columns = 2;
+    const gapX = 16;
+    const gapY = 14;
+    const btnWidth = (this.buttonPanelWidth - gapX) / columns;
+    const btnHeight = 70;
+    const startX = width / 2 - this.buttonPanelWidth / 2 + btnWidth / 2;
+
+    options.forEach((ingredient, idx) => {
+      const col = idx % columns;
+      const row = Math.floor(idx / columns);
+      const x = startX + col * (btnWidth + gapX);
+      const y = this.buttonPanelY + row * (btnHeight + gapY);
+      const color = INGREDIENTS[ingredient]?.color ?? 0xd97a2f;
+
+      const c = this.add.container(x, y);
+      const shadow = this.add.rectangle(0, 6, btnWidth, btnHeight, 0x000000, 0.18).setStrokeStyle(0, 0x000000);
+      const bg = this.add.rectangle(0, 0, btnWidth, btnHeight, color).setStrokeStyle(4, 0xffffff).setInteractive({ useHandCursor: true });
       const label = this.add
-        .text(x, y, ingredient, {
-          fontSize: '20px',
+        .text(0, 0, ingredient, {
+          fontSize: '25px',
           color: '#fff',
           fontStyle: 'bold',
           align: 'center',
@@ -288,19 +343,23 @@ export default class GameScene extends Phaser.Scene {
       })
       .setOrigin(0.5);
 
-    this.tweens.add({
-      targets: text,
-      y: text.y - 36,
-      alpha: 0,
-      duration: 650,
-      onComplete: () => text.destroy(),
-    });
-  }
+    const patienceTotal = this.basePatienceSeconds * this.character.patienceMultiplier * this.activeCustomer.patienceMultiplier;
+    this.activeOrder.timeLimit = Phaser.Math.Clamp(Math.floor(patienceTotal), 8, 45);
 
-  showFeedback(message, color) {
-    this.feedbackText.setText(message).setColor(color).setAlpha(1);
-    this.tweens.killTweensOf(this.feedbackText);
-    this.tweens.add({ targets: this.feedbackText, alpha: 0, duration: 900, delay: 300 });
+    this.playerStack = [];
+    this.patienceRemaining = this.activeOrder.timeLimit;
+
+    this.menuBoardText.setText(`${this.activeOrder.name}`);
+    this.orderText.setText(`Required: ${this.activeOrder.ingredients.join(' + ')}`);
+
+    const borderColor = this.activeCustomer.patienceMultiplier >= 1 ? 0x75c97e : 0xe27266;
+    this.customerOutline.fillColor = borderColor;
+
+    const pool = this.buildIngredientPool(this.activeOrder.ingredients, 8);
+    this.createIngredientButtons(pool);
+    this.refreshStackVisuals();
+    this.updateServeButtonState();
+    this.emitUiUpdate();
   }
 
   playSfx(_name) {
@@ -319,9 +378,7 @@ export default class GameScene extends Phaser.Scene {
   }
 
   update(_, delta) {
-    if (!this.activeOrder) {
-      return;
-    }
+    if (!this.activeOrder) return;
 
     this.patienceRemaining -= delta / 1000;
     if (this.patienceRemaining <= 0) {
@@ -336,14 +393,11 @@ export default class GameScene extends Phaser.Scene {
   updatePatienceBar() {
     const fullWidth = this.scale.width * 0.56;
     const ratio = Phaser.Math.Clamp(this.patienceRemaining / this.activeOrder.timeLimit, 0, 1);
-    this.patienceBar.width = fullWidth * ratio;
+    this.patienceBar.width = full * ratio;
+    this.customerPatienceBar.width = 84 * ratio;
 
-    if (ratio < 0.3) {
-      this.patienceBar.fillColor = 0xd95a4d;
-    } else if (ratio < 0.6) {
-      this.patienceBar.fillColor = 0xddad49;
-    } else {
-      this.patienceBar.fillColor = 0x77c06f;
-    }
+    const color = ratio < 0.3 ? 0xd95a4d : ratio < 0.6 ? 0xddad49 : 0x77c06f;
+    this.patienceBar.fillColor = color;
+    this.customerPatienceBar.fillColor = color;
   }
 }

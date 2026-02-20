@@ -5,90 +5,106 @@ export default class CharacterScene extends Phaser.Scene {
 
   create() {
     const { width, height } = this.scale;
-    this.cameras.main.setBackgroundColor('#fff8ec');
+    const palette = this.registry.get('palette');
+    this.cameras.main.setBackgroundColor(palette.wall);
 
     this.add
-      .text(width / 2, 54, 'Choose Your Chef', {
-        fontSize: '44px',
-        color: '#8f3f1f',
+      .text(width / 2, 74, 'Choose Your Chef', {
+        fontSize: '46px',
+        color: palette.cocoa,
         fontStyle: 'bold',
+        stroke: '#fff8e8',
+        strokeThickness: 8,
       })
       .setOrigin(0.5);
 
     const characters = Object.values(this.registry.get('characters'));
-    const cardWidth = Math.min(250, width * 0.28);
-    const gap = 20;
-    const totalWidth = cardWidth * 3 + gap * 2;
-    const startX = (width - totalWidth) / 2 + cardWidth / 2;
+    const cardWidth = Math.min(420, width - 56);
+    const cardHeight = 250;
+    const gap = 26;
 
     characters.forEach((character, index) => {
-      this.renderCharacterCard(startX + index * (cardWidth + gap), height * 0.55, cardWidth, character);
+      const y = 210 + index * (cardHeight + gap);
+      this.renderCharacterCard(width / 2, y, cardWidth, cardHeight, character, palette);
     });
   }
 
-  renderCharacterCard(x, y, width, character) {
+  renderCharacterCard(x, y, width, height, character, palette) {
     const card = this.add.container(x, y);
-    const bg = this.add
-      .rectangle(0, 0, width, 320, 0xffffff)
-      .setStrokeStyle(2, 0xebae61)
-      .setOrigin(0.5);
 
-    const avatarColor = character.name === 'Deniz' ? 0xffb05f : character.name === 'Kazim' ? 0xa2c889 : 0xf48686;
+    const shadow = this.add.rectangle(0, 8, width, height, 0x000000, 0.15).setOrigin(0.5).setStrokeStyle(0, 0x000000);
+    const bg = this.add.rectangle(0, 0, width, height, 0xfff6e8).setOrigin(0.5).setStrokeStyle(5, 0x9d5533);
 
-    const avatar = this.add.circle(0, -95, 42, avatarColor);
+    const avatar = this.createChefAvatar(-width * 0.34, 8, character);
 
     const name = this.add
-      .text(0, -34, character.name, {
-        fontSize: '28px',
-        color: '#59361f',
+      .text(-20, -58, character.name, {
+        fontSize: '36px',
+        color: palette.cocoa,
         fontStyle: 'bold',
       })
-      .setOrigin(0.5);
+      .setOrigin(0, 0.5);
 
     const mode = this.add
-      .text(0, -2, character.mode, {
-        fontSize: '18px',
-        color: '#8b5e34',
+      .text(-20, -16, character.mode, {
+        fontSize: '24px',
+        color: '#7f4f36',
+        fontStyle: 'bold',
       })
-      .setOrigin(0.5);
+      .setOrigin(0, 0.5);
 
     const description = this.add
-      .text(0, 48, character.description, {
-        fontSize: '15px',
-        color: '#5f4b37',
-        align: 'center',
-        wordWrap: { width: width - 28 },
+      .text(-20, 36, character.description, {
+        fontSize: '20px',
+        color: '#624331',
+        wordWrap: { width: width * 0.55 },
       })
-      .setOrigin(0.5);
+      .setOrigin(0, 0.5);
 
-    const btnBg = this.add
-      .rectangle(0, 120, width - 40, 48, 0xe27d2f)
-      .setOrigin(0.5)
-      .setStrokeStyle(2, 0xffffff)
+    const btn = this.add
+      .rectangle(width * 0.31, 0, 118, 72, 0xe4763f)
+      .setStrokeStyle(4, 0xffffff)
       .setInteractive({ useHandCursor: true });
 
-    const btnLabel = this.add
-      .text(0, 120, 'Select', {
-        fontSize: '22px',
+    const btnText = this.add
+      .text(width * 0.31, 0, 'Pick', {
+        fontSize: '28px',
         color: '#fff',
         fontStyle: 'bold',
       })
       .setOrigin(0.5);
 
-    btnBg.on('pointerdown', () => {
+    btn.on('pointerdown', () => {
       this.registry.set('selectedCharacter', character);
       this.scene.start('GameScene');
       this.scene.launch('UIScene');
     });
 
-    btnBg.on('pointerover', () => {
-      this.tweens.add({ targets: card, scale: 1.03, duration: 120 });
-    });
+    btn.on('pointerover', () => this.tweens.add({ targets: [btn, btnText], scale: 1.06, duration: 100 }));
+    btn.on('pointerout', () => this.tweens.add({ targets: [btn, btnText], scale: 1, duration: 100 }));
 
-    btnBg.on('pointerout', () => {
-      this.tweens.add({ targets: card, scale: 1, duration: 120 });
-    });
+    card.add([shadow, bg, avatar.container, name, mode, description, btn, btnText]);
 
-    card.add([bg, avatar, name, mode, description, btnBg, btnLabel]);
+    this.tweens.add({
+      targets: avatar.container,
+      y: avatar.container.y - 8,
+      duration: 980,
+      yoyo: true,
+      repeat: -1,
+      ease: 'Sine.inOut',
+    });
+  }
+
+  createChefAvatar(x, y, character) {
+    const c = this.add.container(x, y);
+    const scale = character.size;
+
+    const body = this.add.circle(0, 28, 44 * scale, character.bodyColor).setStrokeStyle(4, 0x5b2b1d);
+    const head = this.add.circle(0, -36, 34 * scale, 0xffd0a6).setStrokeStyle(4, 0x5b2b1d);
+    const hatBase = this.add.ellipse(0, -75, 70 * scale, 24 * scale, character.hatColor).setStrokeStyle(4, 0x5b2b1d);
+    const hatTop = this.add.circle(0, -100, 30 * scale, character.hatColor).setStrokeStyle(4, 0x5b2b1d);
+
+    c.add([body, head, hatBase, hatTop]);
+    return { container: c };
   }
 }
