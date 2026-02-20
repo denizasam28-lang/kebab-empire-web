@@ -17,7 +17,9 @@ export default class GameScene extends Phaser.Scene {
     this.ingredientButtons = [];
     this.stackSprites = [];
     this.lastActionTime = 0;
+    this.basePatienceSeconds = 24;
     this.matchRule = 'exact-sequence';
+    this.ingredientButtons = [];
   }
 
   create() {
@@ -36,108 +38,44 @@ export default class GameScene extends Phaser.Scene {
 
   buildShopInterior() {
     const { width, height } = this.scale;
+    this.cameras.main.setBackgroundColor('#f7ead7');
+    this.character = this.registry.get('selectedCharacter');
 
-    this.add.rectangle(width / 2, height * 0.31, width, height * 0.62, 0xf4c793);
-    this.add.rectangle(width / 2, height * 0.58, width, height * 0.07, 0xd98c5f);
-    this.add.rectangle(width / 2, height * 0.76, width, height * 0.48, 0xa85d3b);
+    this.add.rectangle(width / 2, height * 0.42, width - 56, height * 0.42, 0xf1dcc2).setStrokeStyle(2, 0xe0b07e);
+    this.add.rectangle(width / 2, height * 0.8, width - 56, 178, 0xedd2b1).setStrokeStyle(2, 0xe0b07e);
 
-    const signGlow = this.add.text(width / 2, 90, 'Kebab Empire', {
-      fontSize: '58px',
-      color: '#ffb4af',
-      fontStyle: 'bold',
-      stroke: '#ff5e57',
-      strokeThickness: 18,
-    }).setOrigin(0.5).setAlpha(0.35);
-
-    this.neonText = this.add.text(width / 2, 90, 'Kebab Empire', {
-      fontSize: '56px',
-      color: '#fff8ea',
-      fontStyle: 'bold',
-      stroke: '#ff5e57',
-      strokeThickness: 8,
-    }).setOrigin(0.5);
-
-    this.tweens.add({ targets: [signGlow, this.neonText], alpha: { from: 0.9, to: 0.65 }, duration: 900, yoyo: true, repeat: -1 });
-
-    this.add.rectangle(width / 2, 166, width * 0.68, 62, 0x6e3a22).setStrokeStyle(4, 0xfce8ca);
-    this.menuBoardText = this.add
-      .text(width / 2, 166, 'Order: --', {
+    this.customerText = this.add
+      .text(28, 76, '', {
         fontSize: '24px',
-        color: '#ffe7c2',
+        color: '#4e2f19',
         fontStyle: 'bold',
       })
-      .setOrigin(0.5);
-
-    this.createDonerMachine(width * 0.85, height * 0.54);
-  }
-
-  createDonerMachine(x, y) {
-    this.add.rectangle(x, y + 96, 84, 24, 0x4f3629).setStrokeStyle(4, 0x2e2019);
-    this.add.rectangle(x, y + 22, 24, 168, 0x6e6e70).setStrokeStyle(4, 0x48484a);
-
-    this.doner = this.add.ellipse(x, y, 76, 152, 0xd26036).setStrokeStyle(4, 0x6a321f);
-    this.ember = this.add.ellipse(x, y + 82, 52, 18, 0xff8a3d, 0.85).setStrokeStyle(0, 0x000000);
-
-    this.tweens.add({ targets: this.doner, scaleX: { from: 1, to: 0.86 }, duration: 750, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
-    this.tweens.add({ targets: this.ember, alpha: { from: 0.9, to: 0.45 }, duration: 500, yoyo: true, repeat: -1 });
-
-    const steamFrame = this.add.graphics();
-    steamFrame.fillStyle(0xffffff, 0.85);
-    steamFrame.fillCircle(6, 6, 6);
-    steamFrame.generateTexture('steam-dot', 12, 12);
-    steamFrame.destroy();
-
-    this.steam = this.add.particles(x, y - 48, 'steam-dot', {
-      speedY: { min: -90, max: -42 },
-      speedX: { min: -18, max: 18 },
-      lifespan: { min: 800, max: 1200 },
-      scale: { start: 0.9, end: 0 },
-      alpha: { start: 0.6, end: 0 },
-      quantity: 1,
-      frequency: 120,
-    });
-  }
-
-  createCustomerVisual() {
-    const { width } = this.scale;
-    this.customerContainer = this.add.container(width * 0.18, 250);
-    this.customerOutline = this.add.circle(0, 0, 44, 0x75c97e).setStrokeStyle(4, 0x2f5932);
-    const face = this.add.circle(0, 0, 34, 0xffd3af).setStrokeStyle(3, 0x5b2b1d);
-    const eyeL = this.add.circle(-10, -6, 4, 0x362117);
-    const eyeR = this.add.circle(10, -6, 4, 0x362117);
-    const mouth = this.add.arc(0, 10, 12, 20, 160, false, 0x362117).setLineWidth(3, 3);
-
-    this.customerPatienceBg = this.add.rectangle(0, -58, 84, 10, 0xffffff).setStrokeStyle(2, 0x6a4b3b);
-    this.customerPatienceBar = this.add.rectangle(-42, -58, 84, 10, 0x7bd37f).setOrigin(0, 0.5);
-
-    this.customerContainer.add([this.customerOutline, face, eyeL, eyeR, mouth, this.customerPatienceBg, this.customerPatienceBar]);
-  }
-
-  createOrderUI() {
-    const { width, height } = this.scale;
+      .setOrigin(0, 0.5);
 
     this.orderText = this.add
-      .text(width * 0.5, 238, '', {
-        fontSize: '26px',
-        color: '#542d1d',
+      .text(width / 2, 116, '', {
+        fontSize: '24px',
+        color: '#4e2f19',
         fontStyle: 'bold',
         align: 'center',
         wordWrap: { width: width * 0.75 },
       })
       .setOrigin(0.5);
 
-    this.stackZone = this.add.rectangle(width * 0.34, height * 0.53, width * 0.46, 282, 0xf1ceb0).setStrokeStyle(4, 0x8f4f31);
+    this.patienceBarBg = this.add.rectangle(width / 2, 154, width * 0.56, 18, 0xffffff).setStrokeStyle(2, 0xd3a46e);
+    this.patienceBar = this.add.rectangle(width / 2 - width * 0.28, 154, width * 0.56, 18, 0x77c06f).setOrigin(0, 0.5);
+
     this.stackText = this.add
-      .text(width * 0.34, height * 0.67, 'Stack: (empty)', {
-        fontSize: '22px',
-        color: '#5b311e',
+      .text(width / 2, height * 0.46, 'Current Stack: (empty)', {
+        fontSize: '26px',
+        color: '#6c4828',
         align: 'center',
         wordWrap: { width: width * 0.38 },
       })
       .setOrigin(0.5);
 
     this.feedbackText = this.add
-      .text(width * 0.5, height * 0.43, '', {
+      .text(width / 2, height * 0.54, '', {
         fontSize: '30px',
         color: '#3b8f43',
         fontStyle: 'bold',
@@ -145,12 +83,55 @@ export default class GameScene extends Phaser.Scene {
       .setOrigin(0.5)
       .setAlpha(0);
 
-    this.patienceBarBg = this.add.rectangle(width * 0.5, 308, width * 0.78, 18, 0xffffff).setStrokeStyle(3, 0x8e5a37);
-    this.patienceBar = this.add.rectangle(width * 0.11, 308, width * 0.78, 18, 0x77c06f).setOrigin(0, 0.5);
+    this.createActionButtons();
+    this.spawnNextOrder();
+    this.emitUiUpdate();
   }
 
-  createControlButtons() {
+  createActionButtons() {
     const { width, height } = this.scale;
+    const serveButton = this.createButton(width * 0.23, height * 0.64, 180, 64, 'Serve', 0x3d9543, '#ffffff');
+    const clearButton = this.createButton(width * 0.43, height * 0.64, 180, 64, 'Clear', 0xa56038, '#ffffff');
+
+    serveButton.button.on('pointerdown', () => this.serveOrder());
+    clearButton.button.on('pointerdown', () => {
+      this.playerStack = [];
+      this.stackText.setText('Current Stack: (empty)');
+      this.playSfx('clear');
+    });
+
+    this.buttonPanelY = height * 0.79;
+    this.buttonPanelWidth = width - 72;
+  }
+
+  createIngredientButtons(options) {
+    this.ingredientButtons.forEach(({ button, label }) => {
+      button.destroy();
+      label.destroy();
+    });
+    this.ingredientButtons = [];
+
+    const { width } = this.scale;
+    const columns = 3;
+    const rows = Math.ceil(options.length / columns);
+    const gapX = 14;
+    const gapY = 12;
+    const panelWidth = this.buttonPanelWidth;
+    const btnWidth = Math.min(240, (panelWidth - gapX * (columns - 1)) / columns);
+    const btnHeight = rows > 1 ? 56 : 62;
+    const startX = width / 2 - panelWidth / 2 + btnWidth / 2;
+
+    options.forEach((ingredient, idx) => {
+      const col = idx % columns;
+      const row = Math.floor(idx / columns);
+      const x = startX + col * (btnWidth + gapX);
+      const y = this.buttonPanelY + row * (btnHeight + gapY);
+      const fillColor = INGREDIENTS[ingredient]?.color ?? 0xd97a2f;
+
+      const button = this.add
+        .rectangle(x, y, btnWidth, btnHeight, fillColor)
+        .setStrokeStyle(2, 0xfff5ea)
+        .setInteractive({ useHandCursor: true });
 
     this.serveButton = this.createButton(width * 0.74, height * 0.56, 190, 88, 'Serve', 0x3f9d51);
     this.clearButton = this.createButton(width * 0.74, height * 0.67, 190, 74, 'Clear', 0xa45f3a);
@@ -193,158 +174,99 @@ export default class GameScene extends Phaser.Scene {
           fontSize: '25px',
           color: '#fff',
           fontStyle: 'bold',
-          stroke: '#6a2e1b',
-          strokeThickness: 4,
           align: 'center',
-          wordWrap: { width: btnWidth - 20 },
+          wordWrap: { width: btnWidth - 18 },
         })
         .setOrigin(0.5);
 
-      c.add([shadow, bg, label]);
+      button.on('pointerdown', () => this.handleIngredientPick(ingredient));
+      button.on('pointerover', () => this.tweens.add({ targets: [button, label], scale: 1.04, duration: 90 }));
+      button.on('pointerout', () => this.tweens.add({ targets: [button, label], scale: 1, duration: 90 }));
 
-      bg.on('pointerdown', () => {
-        this.handleIngredientPick(ingredient);
-        this.tweens.add({ targets: c, scale: 1.08, duration: 90, yoyo: true });
-        this.emitPopParticles(x, y);
-      });
-      bg.on('pointerover', () => this.tweens.add({ targets: c, scale: 1.04, duration: 90 }));
-      bg.on('pointerout', () => this.tweens.add({ targets: c, scale: 1, duration: 90 }));
-
-      this.ingredientButtons.push({ container: c, bg, label });
+      this.ingredientButtons.push({ button, label });
     });
   }
 
-  createButton(x, y, w, h, text, color) {
-    const c = this.add.container(x, y);
-    const glow = this.add.rectangle(0, 0, w + 20, h + 20, 0xfff2c6, 0.15);
-    const bg = this.add.rectangle(0, 0, w, h, color).setStrokeStyle(5, 0xffffff).setInteractive({ useHandCursor: true });
+  createButton(x, y, w, h, text, color, textColor) {
+    const button = this.add
+      .rectangle(x, y, w, h, color)
+      .setStrokeStyle(2, 0xffffff)
+      .setInteractive({ useHandCursor: true });
+
     const label = this.add
-      .text(0, 0, text, {
-        fontSize: '34px',
-        color: '#fff',
+      .text(x, y, text, {
+        fontSize: '30px',
+        color: textColor,
         fontStyle: 'bold',
-        stroke: '#6c341f',
-        strokeThickness: 5,
       })
       .setOrigin(0.5);
 
-    c.add([glow, bg, label]);
-    bg.on('pointerover', () => this.tweens.add({ targets: c, scale: 1.05, duration: 100 }));
-    bg.on('pointerout', () => this.tweens.add({ targets: c, scale: 1, duration: 100 }));
-    return { container: c, bg, label, glow };
+    button.on('pointerover', () => this.tweens.add({ targets: [button, label], scale: 1.04, duration: 100 }));
+    button.on('pointerout', () => this.tweens.add({ targets: [button, label], scale: 1, duration: 100 }));
+
+    return { button, label };
   }
 
   handleIngredientPick(ingredient) {
     const now = this.time.now;
-    const cooldown = 200 / this.character.prepMultiplier;
-    if (now - this.lastActionTime < cooldown) return;
+    const cooldown = 210 / this.character.prepMultiplier;
+    if (now - this.lastActionTime < cooldown) {
+      return;
+    }
     this.lastActionTime = now;
 
     this.playerStack.push(ingredient);
-    this.refreshStackVisuals();
-    this.updateServeButtonState();
+    this.stackText.setText(`Current Stack: ${this.playerStack.join(' + ')}`);
     this.playSfx('ingredient');
-  }
-
-  refreshStackVisuals() {
-    this.stackSprites.forEach((s) => s.destroy());
-    this.stackSprites = [];
-
-    const baseX = this.stackZone.x;
-    const baseY = this.stackZone.y + 96;
-    const stackItems = this.playerStack.slice(-8);
-
-    stackItems.forEach((ingredient, i) => {
-      const y = baseY - i * 28;
-      const color = INGREDIENTS[ingredient]?.color ?? 0xd97a2f;
-      const plate = this.add.rectangle(baseX, y, 180, 24, color).setStrokeStyle(3, 0xffffff);
-      const text = this.add
-        .text(baseX, y, ingredient, {
-          fontSize: '16px',
-          color: '#fff',
-          fontStyle: 'bold',
-          stroke: '#6b3a24',
-          strokeThickness: 3,
-        })
-        .setOrigin(0.5);
-      this.stackSprites.push(plate, text);
-    });
-
-    this.stackText.setText(this.playerStack.length ? `Stack: ${this.playerStack.join(' • ')}` : 'Stack: (empty)');
-  }
-
-  emitPopParticles(x, y) {
-    const g = this.add.graphics();
-    g.fillStyle(0xffe6b8, 1);
-    g.fillCircle(4, 4, 4);
-    g.generateTexture('pop-dot', 8, 8);
-    g.destroy();
-
-    const emitter = this.add.particles(x, y, 'pop-dot', {
-      speed: { min: 40, max: 110 },
-      angle: { min: 0, max: 360 },
-      lifespan: 280,
-      scale: { start: 1, end: 0 },
-      quantity: 8,
-      gravityY: 80,
-    });
-
-    this.time.delayedCall(260, () => emitter.destroy());
-  }
-
-  updateServeButtonState() {
-    const target = this.activeOrder?.ingredients ?? [];
-    const correctLength = this.playerStack.length === target.length;
-    const correctSeq = correctLength && this.playerStack.every((item, i) => item === target[i]);
-
-    this.serveButton.glow.fillColor = correctSeq ? 0xfff08b : 0xfff2c6;
-    this.serveButton.glow.alpha = correctSeq ? 0.45 : 0.15;
-
-    if (correctSeq) {
-      this.tweens.add({ targets: this.serveButton.container, scale: { from: 1, to: 1.06 }, duration: 260, yoyo: true, repeat: 1 });
-    }
   }
 
   serveOrder() {
     if (!this.activeOrder || this.playerStack.length === 0) {
-      this.showFeedback('Build your kebab first!', '#a14d22');
+      this.showFeedback('Build the order first!', '#a14d22');
       return;
     }
 
     const target = this.activeOrder.ingredients;
-    const isCorrect = this.playerStack.length === target.length && this.playerStack.every((item, i) => item === target[i]);
+    const isCorrect =
+      this.playerStack.length === target.length &&
+      this.playerStack.every((ingredient, index) => ingredient === target[index]);
 
     if (isCorrect) {
       this.applyOrderSuccess();
-    } else {
-      this.applyOrderFailure('Wrong recipe served.', 'mistake');
+      return;
     }
+
+    this.applyOrderFailure('Wrong recipe served.', 'mistake');
   }
 
   applyOrderSuccess() {
     const timeRatio = Phaser.Math.Clamp(this.patienceRemaining / this.activeOrder.timeLimit, 0, 1);
     const difficultyScore = 60 + this.activeOrder.difficulty * 40;
-    const speedBonus = Math.floor(90 * timeRatio);
+    const speedBonus = Math.floor(80 * timeRatio);
     const comboMultiplier = 1 + (this.combo - 1) * 0.35;
     const gained = Math.floor(difficultyScore * comboMultiplier + speedBonus);
 
     this.score += gained;
     this.completedOrders += 1;
     this.combo = Math.min(this.combo + 0.2, 5);
-    if (this.completedOrders % 3 === 0) this.level += 1;
 
-    this.showFeedback(`Perfect! +${gained}`, '#2f9144');
+    if (this.completedOrders % 3 === 0) {
+      this.level += 1;
+    }
+
+    this.showFloatingMoney(`+$${gained}`);
+    this.showFeedback('Perfect serve!', '#3b8f43');
     this.playSfx('success');
     this.spawnNextOrder();
   }
 
   applyOrderFailure(message, reason = 'mistake') {
-    const basePenalty = reason === 'timeout' ? 24 : 42;
+    const basePenalty = reason === 'timeout' ? 25 : 45;
     const penalty = Math.floor((basePenalty + this.level * 4) * this.character.mistakePenaltyMultiplier);
     this.score = Math.max(0, this.score - penalty);
     this.combo = 1;
 
-    this.showFeedback(`${message} -${penalty}`, '#be4636');
+    this.showFeedback(`${message} (-$${penalty})`, '#b84433');
     this.playSfx('fail');
     this.spawnNextOrder();
   }
@@ -358,17 +280,12 @@ export default class GameScene extends Phaser.Scene {
 
     this.playerStack = [];
     this.patienceRemaining = this.activeOrder.timeLimit;
+    this.stackText.setText('Current Stack: (empty)');
+    this.orderText.setText(`Order (${this.matchRule}): ${this.activeOrder.ingredients.join(' + ')}`);
+    this.customerText.setText(`Customer: ${this.activeCustomer.name}`);
 
-    this.menuBoardText.setText(`${this.activeOrder.name}`);
-    this.orderText.setText(`Required: ${this.activeOrder.ingredients.join(' + ')}`);
-
-    const borderColor = this.activeCustomer.patienceMultiplier >= 1 ? 0x75c97e : 0xe27266;
-    this.customerOutline.fillColor = borderColor;
-
-    const pool = this.buildIngredientPool(this.activeOrder.ingredients, 8);
-    this.createIngredientButtons(pool);
-    this.refreshStackVisuals();
-    this.updateServeButtonState();
+    const ingredientPool = this.buildIngredientPool(this.activeOrder.ingredients, 6);
+    this.createIngredientButtons(ingredientPool);
     this.emitUiUpdate();
   }
 
@@ -380,8 +297,9 @@ export default class GameScene extends Phaser.Scene {
       return { item, weight: levelWeight * difficultyWeight };
     });
 
-    const total = weighted.reduce((sum, w) => sum + w.weight, 0);
-    let roll = Math.random() * total;
+    const totalWeight = weighted.reduce((sum, entry) => sum + entry.weight, 0);
+    let roll = Math.random() * totalWeight;
+
     for (const entry of weighted) {
       roll -= entry.weight;
       if (roll <= 0) {
@@ -403,25 +321,49 @@ export default class GameScene extends Phaser.Scene {
     };
   }
 
-  buildIngredientPool(required, targetCount) {
-    const pool = new Set(required);
-    const extras = Object.keys(INGREDIENTS).filter((name) => !pool.has(name));
-    while (pool.size < targetCount && extras.length) {
-      const idx = Phaser.Math.Between(0, extras.length - 1);
-      pool.add(extras[idx]);
-      extras.splice(idx, 1);
+  buildIngredientPool(requiredIngredients, targetCount) {
+    const pool = new Set(requiredIngredients);
+    const candidates = Object.keys(INGREDIENTS).filter((ingredient) => !pool.has(ingredient));
+
+    while (pool.size < targetCount && candidates.length > 0) {
+      const index = Phaser.Math.Between(0, candidates.length - 1);
+      pool.add(candidates[index]);
+      candidates.splice(index, 1);
     }
+
     return Phaser.Utils.Array.Shuffle(Array.from(pool));
   }
 
-  showFeedback(message, color) {
-    this.feedbackText.setText(message).setColor(color).setAlpha(1).setScale(1);
-    this.tweens.killTweensOf(this.feedbackText);
-    this.tweens.add({ targets: this.feedbackText, y: this.feedbackText.y - 10, alpha: 0, duration: 900, delay: 150, onComplete: () => this.feedbackText.setY(this.scale.height * 0.43) });
+  showFloatingMoney(label) {
+    const text = this.add
+      .text(this.scale.width / 2, this.scale.height * 0.6, label, {
+        fontSize: '30px',
+        color: '#2a8a2f',
+        fontStyle: 'bold',
+      })
+      .setOrigin(0.5);
+
+    const patienceTotal = this.basePatienceSeconds * this.character.patienceMultiplier * this.activeCustomer.patienceMultiplier;
+    this.activeOrder.timeLimit = Phaser.Math.Clamp(Math.floor(patienceTotal), 8, 45);
+
+    this.playerStack = [];
+    this.patienceRemaining = this.activeOrder.timeLimit;
+
+    this.menuBoardText.setText(`${this.activeOrder.name}`);
+    this.orderText.setText(`Required: ${this.activeOrder.ingredients.join(' + ')}`);
+
+    const borderColor = this.activeCustomer.patienceMultiplier >= 1 ? 0x75c97e : 0xe27266;
+    this.customerOutline.fillColor = borderColor;
+
+    const pool = this.buildIngredientPool(this.activeOrder.ingredients, 8);
+    this.createIngredientButtons(pool);
+    this.refreshStackVisuals();
+    this.updateServeButtonState();
+    this.emitUiUpdate();
   }
 
   playSfx(_name) {
-    // Placeholder for future free audio SFX.
+    // Placeholder hook for future free SFX integration.
   }
 
   emitUiUpdate() {
@@ -444,12 +386,12 @@ export default class GameScene extends Phaser.Scene {
       return;
     }
 
-    this.updatePatienceBars();
+    this.updatePatienceBar();
     this.emitUiUpdate();
   }
 
-  updatePatienceBars() {
-    const full = this.scale.width * 0.78;
+  updatePatienceBar() {
+    const fullWidth = this.scale.width * 0.56;
     const ratio = Phaser.Math.Clamp(this.patienceRemaining / this.activeOrder.timeLimit, 0, 1);
     this.patienceBar.width = full * ratio;
     this.customerPatienceBar.width = 84 * ratio;
