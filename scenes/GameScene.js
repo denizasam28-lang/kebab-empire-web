@@ -167,49 +167,6 @@ export default class GameScene extends Phaser.Scene {
   }
 
   createIngredientButtons(options) {
-    this.ingredientButtons.forEach(({ button, label }) => {
-      button.destroy();
-      label.destroy();
-    });
-    this.ingredientButtons = [];
-
-    const { width } = this.scale;
-    const columns = 3;
-    const rows = Math.ceil(options.length / columns);
-    const gapX = 14;
-    const gapY = 12;
-    const panelWidth = this.buttonPanelWidth;
-    const btnWidth = Math.min(240, (panelWidth - gapX * (columns - 1)) / columns);
-    const btnHeight = rows > 1 ? 56 : 62;
-    const startX = width / 2 - panelWidth / 2 + btnWidth / 2;
-
-    options.forEach((ingredient, idx) => {
-      const col = idx % columns;
-      const row = Math.floor(idx / columns);
-      const x = startX + col * (btnWidth + gapX);
-      const y = this.buttonPanelY + row * (btnHeight + gapY);
-      const fillColor = INGREDIENTS[ingredient]?.color ?? 0xd97a2f;
-
-      const button = this.add
-        .rectangle(x, y, btnWidth, btnHeight, fillColor)
-        .setStrokeStyle(2, 0xfff5ea)
-        .setInteractive({ useHandCursor: true });
-
-    this.serveButton = this.createButton(width * 0.74, height * 0.56, 190, 88, 'Serve', 0x3f9d51);
-    this.clearButton = this.createButton(width * 0.74, height * 0.67, 190, 74, 'Clear', 0xa45f3a);
-
-    this.serveButton.bg.on('pointerdown', () => this.serveOrder());
-    this.clearButton.bg.on('pointerdown', () => {
-      this.playerStack = [];
-      this.refreshStackVisuals();
-      this.playSfx('clear');
-    });
-
-    this.buttonPanelY = height * 0.79;
-    this.buttonPanelWidth = width - 36;
-  }
-
-  createIngredientButtons(options) {
     this.ingredientButtons.forEach((item) => item.container.destroy());
     this.ingredientButtons = [];
 
@@ -241,9 +198,9 @@ export default class GameScene extends Phaser.Scene {
         })
         .setOrigin(0.5);
 
-      button.on('pointerdown', () => this.handleIngredientPick(ingredient));
-      button.on('pointerover', () => this.tweens.add({ targets: [button, label], scale: 1.04, duration: 90 }));
-      button.on('pointerout', () => this.tweens.add({ targets: [button, label], scale: 1, duration: 90 }));
+     bg.on('pointerdown', () => this.handleIngredientPick(ingredient));
+bg.on('pointerover', () => this.tweens.add({ targets: [bg, label], scale: 1.04, duration: 90 }));
+bg.on('pointerout', () => this.tweens.add({ targets: [bg, label], scale: 1, duration: 90 }));
 
       this.ingredientButtons.push({ button, label });
     });
@@ -410,7 +367,14 @@ export default class GameScene extends Phaser.Scene {
       .setOrigin(0.5)
       .setDepth(46);
 
-    this.tweens.add({ targets: pop, y: pop.y - 46, alpha: 0, duration: 760, onComplete: () => pop.destroy() });
+    this.tweens.add({
+  targets: text,
+  y: text.y - 46,
+  alpha: 0,
+  duration: 760,
+  onComplete: () => text.destroy()
+});
+    
   }
 
   exitCustomerToRight(onComplete) {
@@ -469,7 +433,7 @@ export default class GameScene extends Phaser.Scene {
   updatePatienceBar() {
     const fullWidth = this.scale.width * 0.56;
     const ratio = Phaser.Math.Clamp(this.patienceRemaining / this.activeOrder.timeLimit, 0, 1);
-    this.patienceBar.width = full * ratio;
+    this.patienceBar.width = fullWidth * ratio;
     this.customerPatienceBar.width = 84 * ratio;
 
     const color = ratio < 0.3 ? 0xd95a4d : ratio < 0.6 ? 0xddad49 : 0x77c06f;
