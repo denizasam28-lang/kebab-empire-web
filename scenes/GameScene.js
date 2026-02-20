@@ -9,6 +9,7 @@ export default class GameScene extends Phaser.Scene {
     this.combo = 1;
     this.level = 1;
     this.completedOrders = 0;
+    this.basePatienceSeconds = 24;
     this.activeOrder = null;
     this.activeCustomer = null;
     this.playerStack = [];
@@ -73,6 +74,66 @@ export default class GameScene extends Phaser.Scene {
         wordWrap: { width: width * 0.38 },
       })
       .setOrigin(0.5);
+    this.bgLayer.add([this.menuBoard, this.menuBoardText]);
+
+    this.createDoor();
+    this.createDonerMachine(width * 0.84, height * 0.45);
+
+    this.counterTop = this.add.rectangle(width / 2, height * 0.58, width, 86, 0xce7f4e).setStrokeStyle(4, 0x8b4c2f);
+    this.counterFront = this.add.rectangle(width / 2, height * 0.77, width, height * 0.36, 0xa65b3b).setStrokeStyle(4, 0x7a3f27);
+    this.midLayer.add([this.counterFront, this.counterTop]);
+
+    this.vignette = this.add.graphics().setDepth(50);
+    this.vignette.fillStyle(0x000000, 0.16);
+    this.vignette.fillRect(0, 0, width, 40);
+    this.vignette.fillRect(0, height - 50, width, 50);
+    this.vignette.fillRect(0, 0, 24, height);
+    this.vignette.fillRect(width - 24, 0, 24, height);
+  }
+
+  createDoor() {
+    const { height } = this.scale;
+    const x = 60;
+    const y = height * 0.45;
+
+    const frame = this.add.rectangle(x, y, 96, 190, 0x6a3f2c).setStrokeStyle(4, 0xf9ddc1);
+    const leftDoor = this.add.rectangle(x - 20, y, 36, 172, 0xa56c49).setStrokeStyle(2, 0x5a3526);
+    const rightDoor = this.add.rectangle(x + 20, y, 36, 172, 0xa56c49).setStrokeStyle(2, 0x5a3526);
+
+    this.door = { leftDoor, rightDoor, baseX: x };
+    this.bgLayer.add([frame, leftDoor, rightDoor]);
+  }
+
+  animateDoorOpen() {
+    this.play('door-open');
+    this.tweens.add({ targets: this.door.leftDoor, x: this.door.baseX - 34, duration: 220, yoyo: true });
+    this.tweens.add({ targets: this.door.rightDoor, x: this.door.baseX + 34, duration: 220, yoyo: true });
+  }
+
+  createDonerMachine(x, y) {
+    const stand = this.add.rectangle(x, y + 100, 92, 26, 0x4f3629).setStrokeStyle(4, 0x2e2019);
+    const pole = this.add.rectangle(x, y + 18, 24, 178, 0x6e6e70).setStrokeStyle(4, 0x48484a);
+    this.doner = this.add.ellipse(x, y, 76, 160, 0xd26036).setStrokeStyle(4, 0x6a321f);
+    this.ember = this.add.ellipse(x, y + 86, 52, 20, 0xff8a3d, 0.85);
+
+    this.midLayer.add([stand, pole, this.doner, this.ember]);
+
+    this.tweens.add({ targets: this.doner, scaleX: { from: 1, to: 0.84 }, duration: 780, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
+    this.tweens.add({ targets: this.ember, alpha: { from: 0.9, to: 0.45 }, duration: 560, yoyo: true, repeat: -1 });
+
+    this.steam = this.add.particles(x, y - 54, 'steam-dot', {
+      speedY: { min: -90, max: -50 },
+      speedX: { min: -18, max: 18 },
+      lifespan: { min: 700, max: 1100 },
+      scale: { start: 0.95, end: 0 },
+      alpha: { start: 0.6, end: 0 },
+      quantity: 1,
+      frequency: 100,
+    }).setDepth(12);
+  }
+
+  createCounterUI() {
+    const { width, height } = this.scale;
 
     this.feedbackText = this.add
       .text(width / 2, height * 0.54, '', {
@@ -81,6 +142,7 @@ export default class GameScene extends Phaser.Scene {
         fontStyle: 'bold',
       })
       .setOrigin(0.5)
+      .setDepth(42)
       .setAlpha(0);
 
     this.createActionButtons();
@@ -208,6 +270,8 @@ export default class GameScene extends Phaser.Scene {
   }
 
   handleIngredientPick(ingredient) {
+    if (this.isTransitioningCustomer) return;
+
     const now = this.time.now;
     const cooldown = 210 / this.character.prepMultiplier;
     if (now - this.lastActionTime < cooldown) {
@@ -215,6 +279,7 @@ export default class GameScene extends Phaser.Scene {
     }
     this.lastActionTime = now;
 
+    this.lastActionTime = now;
     this.playerStack.push(ingredient);
     this.stackText.setText(`Current Stack: ${this.playerStack.join(' + ')}`);
     this.playSfx('ingredient');
@@ -250,9 +315,10 @@ export default class GameScene extends Phaser.Scene {
     this.completedOrders += 1;
     this.combo = Math.min(this.combo + 0.2, 5);
 
-    if (this.completedOrders % 3 === 0) {
-      this.level += 1;
-    }
+    this.play('serve-success');
+    this.playSfx('success');
+    this.showMoneyPop(`+$${gained}`);
+    this.showFeedback('Great serve!', '#2f9144');
 
     this.showFloatingMoney(`+$${gained}`);
     this.showFeedback('Perfect serve!', '#3b8f43');
@@ -341,7 +407,17 @@ export default class GameScene extends Phaser.Scene {
         color: '#2a8a2f',
         fontStyle: 'bold',
       })
-      .setOrigin(0.5);
+      .setOrigin(0.5)
+      .setDepth(46);
+
+    this.tweens.add({ targets: pop, y: pop.y - 46, alpha: 0, duration: 760, onComplete: () => pop.destroy() });
+  }
+
+  exitCustomerToRight(onComplete) {
+    if (!this.customerVisual) {
+      onComplete();
+      return;
+    }
 
     const patienceTotal = this.basePatienceSeconds * this.character.patienceMultiplier * this.activeCustomer.patienceMultiplier;
     this.activeOrder.timeLimit = Phaser.Math.Clamp(Math.floor(patienceTotal), 8, 45);
